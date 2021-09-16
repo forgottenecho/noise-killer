@@ -1,3 +1,5 @@
+https://www.tensorflow.org/tutorials/generative/autoencoder
 https://towardsdatascience.com/understanding-audio-data-fourier-transform-fft-spectrogram-and-speech-recognition-a4072d228520
 https://www.tensorflow.org/io/tutorials/audio
 https://www.headphonesty.com/2019/07/sample-rate-bit-depth-bit-rate/#:~:text=In%20summary%2C%20sample%20rate%20is,recorded%20per%20unit%20of%20time.
+https://www.youtube.com/watch?v=z7X6jgFnB6Y&ab_channel=NTS
