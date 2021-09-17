@@ -24,11 +24,12 @@ window vs frame
 """
 import tensorflow_io as tfio
 import matplotlib.pyplot as plt
-import numpy as np
 
+# load and slice the audio
 audio = tfio.audio.AudioIOTensor('dataset/000/000002.mp3')[:2000]
 audio = audio[:, 0] # must split into 2 steps because slicing does a type conversion above and fails on double slice
 
+# generate example spectrograms
 a = tfio.audio.spectrogram(
     audio, nfft=100, window=10, stride=10)
 print(a.shape)
@@ -41,11 +42,9 @@ c = tfio.audio.spectrogram(
     audio, nfft=300, window=512, stride=1)
 print(c.shape)
 
+# plot the results
 fig, axs = plt.subplots(3)
 axs[0].imshow(a)
 axs[1].imshow(b)
 axs[2].imshow(c)
 plt.show()
-
-
-print('debug')
