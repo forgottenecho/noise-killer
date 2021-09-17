@@ -7,6 +7,7 @@ matplotlib
 librosa
 
 To Do
+- loading all audio w librosa? (remove tfio bc slicing issues)
 - test inverse FF audio quality w diff window sizes
 - build python nn
 
