@@ -3,6 +3,7 @@ import tensorflow_io as tfio
 import numpy as np
 import os
 import librosa
+import matplotlib.pyplot as plt
 
 def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50):
 
@@ -66,6 +67,14 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
         
     return dataset
 
+# build the dataset
 data = get_training_data(max_songs=70)
+
+# show random spectrogram to see that it works
+rand = np.random.randint(0, data.shape[0])
+random_spec = data[rand, :, :, 0]
+plt.figure()
+plt.imshow(random_spec)
+plt.show()
 
 print("debug")
