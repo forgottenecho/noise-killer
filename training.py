@@ -1,9 +1,11 @@
-# import tensorflow as tf
+import tensorflow as tf
 import tensorflow_io as tfio
 import numpy as np
 import os
 import librosa
 import matplotlib.pyplot as plt
+
+np.random.seed(42)
 
 def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50):
 
@@ -24,23 +26,29 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
         os.chdir(folder)
         for song in os.listdir():
 
-            # audio file to tensor of samples
+            # audio file to tensor of samples / metadata
             song_tensor = tfio.audio.AudioIOTensor(song)
             rate = song_tensor.rate.numpy()
+            shape = song_tensor.shape.numpy()
 
             # filter out unwanted data
             if not rate in acceptable_rates:
                 continue
-            if song_tensor.shape[0] < sample_size: # song too small
+            if shape[0] < sample_size: # song too small
                 continue
-            if not song_tensor.shape[1] == 2: # song not stereo
+            if not shape[1] == 2: # song not stereo
                 continue
             
-            # slicing
-            start_point = np.random.randint(0, song_tensor.shape[0] - sample_size + 1)
-            song_tensor = song_tensor[start_point:start_point+sample_size]
+            # slicing, pick random window of size 'sample_size'
+            start_point = np.random.randint(0, shape[0] - sample_size + 1)
+            try:
+                song_tensor = song_tensor[start_point:start_point+sample_size]
+            except tf.errors.InvalidArgumentError: # some songs don't like being sliced towards the END of the array
+                print('Did not like the slicing of {}'.format(song))
+                continue
+
+            # numpy-ify
             song_tensor = song_tensor.numpy()
-            # print('Chose {} as starting point for index'.format(start_point))
 
             # generate those lovely spectrograms, one per each audio channel
             mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
@@ -69,7 +77,7 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
     return dataset
 
 # build the dataset
-data = get_training_data(max_songs=70)
+data = get_training_data()
 
 # show random spectrogram to see that it works
 rand = np.random.randint(0, data.shape[0])

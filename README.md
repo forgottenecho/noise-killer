@@ -9,6 +9,5 @@ librosa
 To Do
 - have data building function return noisy data and unnoisy
 - maybe utilize entire track
-- seed the RNG
 - build python nn
 - train the model
