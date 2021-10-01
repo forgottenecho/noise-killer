@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
-def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50):
+def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2):
 
     # placeholder for later
     dataset = None
+    dataset_noisy = None
 
     print('Generating dataset')
 
@@ -47,21 +48,31 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
                 print('Did not like the slicing of {}'.format(song))
                 continue
 
-            # numpy-ify
+            # numpy-ify and create noisy audio sample
             song_tensor = song_tensor.numpy()
+            song_tensor_noisy = song_tensor + noise_factor * song_tensor.max() * tf.random.normal(song_tensor.shape)
 
             # generate those lovely spectrograms, one per each audio channel
             mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
             mel_spec_channel_2 = librosa.feature.melspectrogram(y=song_tensor[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
+            mel_spec_noisy_1 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
+            mel_spec_noisy_2 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
 
             # create dataset / append to the dataset
             new_instance = np.empty((1, mel_spec_channel_1.shape[0], mel_spec_channel_2.shape[1], 2))
             new_instance[0, :, :, 0] = mel_spec_channel_1
             new_instance[0, :, :, 1] = mel_spec_channel_2
+            
+            new_instance_noisy = np.empty((1, mel_spec_noisy_1.shape[0], mel_spec_noisy_2.shape[1], 2))
+            new_instance_noisy[0, :, :, 0] = mel_spec_noisy_1
+            new_instance_noisy[0, :, :, 1] = mel_spec_noisy_2
+
             if dataset is None:
                 dataset = new_instance
+                dataset_noisy = new_instance_noisy
             else:
                 dataset = np.vstack([dataset, new_instance])
+                dataset_noisy = np.vstack([dataset_noisy, new_instance_noisy])
             # print('Dataset shape: {}'.format(dataset.shape))
         
         # reset
@@ -73,11 +84,11 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
             break
     
     print('Dataset is of size {}'.format(dataset.shape))
-        
-    return dataset
+
+    return dataset, dataset_noisy
 
 # build the dataset
-data = get_training_data()
+data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=512, spec_hop=64)
 
 # show random spectrogram to see that it works
 rand = np.random.randint(0, data.shape[0])
