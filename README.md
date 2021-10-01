@@ -7,7 +7,6 @@ matplotlib
 librosa
 
 To Do
-- have data building function return noisy data and unnoisy
 - maybe utilize entire track
 - build python nn
 - train the model

@@ -49,8 +49,10 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
                 continue
 
             # numpy-ify and create noisy audio sample
+            # using max() was too much noise, settled on abs().mean()
             song_tensor = song_tensor.numpy()
-            song_tensor_noisy = song_tensor + noise_factor * song_tensor.max() * tf.random.normal(song_tensor.shape)
+            song_tensor_noisy = song_tensor + noise_factor * abs(song_tensor).mean() * tf.random.normal(song_tensor.shape)
+            song_tensor_noisy = song_tensor_noisy.numpy()
 
             # generate those lovely spectrograms, one per each audio channel
             mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
@@ -93,8 +95,10 @@ data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=5
 # show random spectrogram to see that it works
 rand = np.random.randint(0, data.shape[0])
 random_spec = data[rand, :, :, 0]
-plt.figure()
-plt.imshow(random_spec)
+random_spec_noisy = data_noisy[rand, :, :, 0]
+figs, axs = plt.subplots(2)
+axs[0].imshow(random_spec)
+axs[1].imshow(random_spec_noisy)
 plt.show()
 
 print("debug")
