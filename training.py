@@ -36,14 +36,13 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
             if not song_tensor.shape[1] == 2: # song not stereo
                 continue
             
-            # slicing and metadata
-            sample_rate = song_tensor.rate.numpy()
+            # slicing
             song_tensor = song_tensor[:sample_size]
             song_tensor = song_tensor.numpy()
 
             # generate those lovely spectrograms, one per each audio channel
-            mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=sample_rate, n_fft=spec_nfft, hop_length=spec_hop)
-            mel_spec_channel_2 = librosa.feature.melspectrogram(y=song_tensor[:,1], sr=sample_rate, n_fft=spec_nfft, hop_length=spec_hop)
+            mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
+            mel_spec_channel_2 = librosa.feature.melspectrogram(y=song_tensor[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
 
             # create dataset / append to the dataset
             new_instance = np.empty((1, mel_spec_channel_1.shape[0], mel_spec_channel_2.shape[1], 2))

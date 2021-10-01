@@ -7,7 +7,7 @@ matplotlib
 librosa
 
 To Do
-- loading all audio w librosa? (remove tfio bc slicing issues)
-- test inverse FF audio quality w diff window sizes
+- have data building function return noisy data and unnoisy
+- build data not JUST from beginning of audio (random or maybe utilize entire track)
 - build python nn
-
+- train the model
