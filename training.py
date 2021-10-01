@@ -37,8 +37,10 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
                 continue
             
             # slicing
-            song_tensor = song_tensor[:sample_size]
+            start_point = np.random.randint(0, song_tensor.shape[0] - sample_size + 1)
+            song_tensor = song_tensor[start_point:start_point+sample_size]
             song_tensor = song_tensor.numpy()
+            # print('Chose {} as starting point for index'.format(start_point))
 
             # generate those lovely spectrograms, one per each audio channel
             mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)

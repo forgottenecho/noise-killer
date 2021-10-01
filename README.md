@@ -8,6 +8,7 @@ librosa
 
 To Do
 - have data building function return noisy data and unnoisy
-- build data not JUST from beginning of audio (random or maybe utilize entire track)
+- maybe utilize entire track
+- seed the RNG
 - build python nn
 - train the model
