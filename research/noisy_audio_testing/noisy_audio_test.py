@@ -1,3 +1,9 @@
+"""
+After listening to the noisy sample, it sounds to me like the amount and type of noise someone
+would want removed from their audio file.
+
+Thus, we proceed with these general parameters for noise generation
+"""
 import tensorflow_io as tfio
 import tensorflow as tf
 import soundfile
