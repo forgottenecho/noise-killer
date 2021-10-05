@@ -4,6 +4,7 @@ import numpy as np
 import os
 import librosa
 import matplotlib.pyplot as plt
+import math
 
 np.random.seed(42)
 
@@ -100,5 +101,17 @@ figs, axs = plt.subplots(2)
 axs[0].imshow(random_spec)
 axs[1].imshow(random_spec_noisy)
 plt.show()
+
+# randomize the data
+np.random.shuffle(data)
+np.random.shuffle(data_noisy)
+
+# split the dataset
+ratio = 0.75
+crit_index = math.floor(ratio*len(data))
+X_train = data[:crit_index]
+X_test = data[crit_index:]
+Y_train = data_noisy[:crit_index]
+Y_test = data_noisy[crit_index:]
 
 print("debug")
