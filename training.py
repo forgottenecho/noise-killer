@@ -91,7 +91,7 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
     return dataset, dataset_noisy
 
 # build the dataset
-data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=512, spec_hop=64)
+data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=511, spec_hop=64)
 
 # show random spectrogram to see that it works
 rand = np.random.randint(0, data.shape[0])
@@ -113,5 +113,13 @@ X_train = data[:crit_index]
 X_test = data[crit_index:]
 Y_train = data_noisy[:crit_index]
 Y_test = data_noisy[crit_index:]
+
+# create the model
+input = tf.keras.layers.Input(shape=data[0].shape)
+x = tf.keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(input)
+x = tf.keras.layers.MaxPool2D()(x)
+output = tf.keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(x)
+model = tf.keras.Model(input, output)
+model.summary()
 
 print("debug")
