@@ -8,6 +8,7 @@ import math
 
 np.random.seed(42)
 
+# helper function for preprocessing and dataset building
 def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2):
 
     # placeholder for later
@@ -90,6 +91,29 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
 
     return dataset, dataset_noisy
 
+# helper function for model architecture
+def get_model(shape, layers=1):
+    assert layers > 0
+    input = tf.keras.layers.Input(shape=shape)
+    last_layer = input
+
+    # encoder portion
+    for i in range(layers):
+        x = tf.keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(last_layer)
+        x = tf.keras.layers.MaxPool2D()(x)
+        last_layer = x
+    
+    # decoder portion
+    for i in range(layers):
+        x = tf.keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(last_layer)
+        last_layer = x
+
+    output = last_layer
+
+    return tf.keras.Model(input, output)
+
+
+
 # build the dataset
 data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=511, spec_hop=64)
 
@@ -115,11 +139,7 @@ Y_train = data_noisy[:crit_index]
 Y_test = data_noisy[crit_index:]
 
 # create the model
-input = tf.keras.layers.Input(shape=data[0].shape)
-x = tf.keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(input)
-x = tf.keras.layers.MaxPool2D()(x)
-output = tf.keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(x)
-model = tf.keras.Model(input, output)
+model = get_model(shape=data[0].shape, layers=4)
 model.summary()
 
 print("debug")
