@@ -79,10 +79,10 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
                 dataset = np.vstack([dataset, new_instance])
                 dataset_noisy = np.vstack([dataset_noisy, new_instance_noisy])
             # print('Dataset shape: {}'.format(dataset.shape))
+            print('Folder: {}\tSong: {}\tTotal: {}'.format(folder, song, dataset.shape[0]), end='\r')
         
         # reset
         os.chdir('..')
-        print('.', end='')
 
         # don't load whole dataset when testing
         if not max_songs is None and dataset.shape[0] > max_songs:
@@ -116,7 +116,7 @@ def get_model(shape, layers=1):
 
 
 # build the dataset
-data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=511, spec_hop=64)
+data, data_noisy = get_training_data(max_songs=1000, sample_size=4096, spec_nfft=511, spec_hop=64)
 
 # # show random spectrogram to see that it works
 # rand = np.random.randint(0, data.shape[0])
@@ -150,7 +150,8 @@ history = model.fit(
     y=Y_train, 
     validation_data=(X_test, Y_test),
     batch_size=32,
-    epochs=10
+    epochs=100
+    
 )
 
 plt.plot(history.history['loss'])
