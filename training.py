@@ -3,9 +3,10 @@ import tensorflow.keras as keras # parameter hints are broken unless I do this
 import tensorflow_io as tfio
 import numpy as np
 import os
-import librosa
 import matplotlib.pyplot as plt
 import math
+import librosa
+import soundfile
 
 np.random.seed(42)
 
@@ -113,10 +114,30 @@ def get_model(shape, layers=1):
 
     return keras.Model(input, output)
 
+def denoise_test(examples, model, hop_length, n_fft, save_dir=''):
+    # TODO samplerate is currently hardcoded, must fix to be dynamic!
+    sample_rate = 44100
 
+    # get denoised specs
+    examples_denoised = model.predict(examples)
+
+    for i in range(examples.shape[0]):
+        example = examples[i]
+        example_denoised = examples_denoised[i]
+
+        # spec to audio
+        # TODO here we are loosing the stereo by subscripting! fix later
+        rebuild = librosa.feature.inverse.mel_to_audio(example[:, :, 0], sr=sample_rate, n_fft=n_fft, hop_length=hop_length)
+        rebuild_denoised = librosa.feature.inverse.mel_to_audio(example_denoised[:, :, 0], sr=sample_rate, n_fft=n_fft, hop_length=hop_length)
+
+        # output to file
+        # TODO not writing outfiles for some reason
+        # TODO must fix so that output samples == nubmer of input samples. we are losing some samples
+        soundfile.write('orig{}.wav'.format(i), data=rebuild, samplerate=sample_rate)
+        soundfile.write('rebuild{}.wav'.format(i), data=rebuild_denoised, samplerate=sample_rate)
 
 # build the dataset
-data, data_noisy = get_training_data(max_songs=1000, sample_size=4096, spec_nfft=511, spec_hop=64)
+data, data_noisy = get_training_data(max_songs=100, sample_size=4096, spec_nfft=511, spec_hop=64)
 
 # # show random spectrogram to see that it works
 # rand = np.random.randint(0, data.shape[0])
@@ -150,12 +171,18 @@ history = model.fit(
     y=Y_train, 
     validation_data=(X_test, Y_test),
     batch_size=32,
-    epochs=100
-    
+    epochs=10
+
 )
 
+# save example 3 audio files for audio test of how it sounds
+# TODO have some object that holds dataset construction params! so i don't have to keep passing into functions separately
+denoise_test(examples=X_test[0:3], model=model, hop_length=64, n_fft=511)
+
+# output the training metrics
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.show()
+
 
 print("debug")
