@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.keras as keras # parameter hints are broken unless I do this
 import tensorflow_io as tfio
 import numpy as np
 import os
@@ -94,37 +95,37 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
 # helper function for model architecture
 def get_model(shape, layers=1):
     assert layers > 0
-    input = tf.keras.layers.Input(shape=shape)
+    input = keras.layers.Input(shape=shape)
     last_layer = input
 
     # encoder portion
     for i in range(layers):
-        x = tf.keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(last_layer)
-        x = tf.keras.layers.MaxPool2D()(x)
+        x = keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(last_layer)
+        x = keras.layers.MaxPool2D()(x)
         last_layer = x
     
     # decoder portion
     for i in range(layers):
-        x = tf.keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(last_layer)
+        x = keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(last_layer)
         last_layer = x
 
     output = last_layer
 
-    return tf.keras.Model(input, output)
+    return keras.Model(input, output)
 
 
 
 # build the dataset
 data, data_noisy = get_training_data(max_songs=50, sample_size=4096, spec_nfft=511, spec_hop=64)
 
-# show random spectrogram to see that it works
-rand = np.random.randint(0, data.shape[0])
-random_spec = data[rand, :, :, 0]
-random_spec_noisy = data_noisy[rand, :, :, 0]
-figs, axs = plt.subplots(2)
-axs[0].imshow(random_spec)
-axs[1].imshow(random_spec_noisy)
-plt.show()
+# # show random spectrogram to see that it works
+# rand = np.random.randint(0, data.shape[0])
+# random_spec = data[rand, :, :, 0]
+# random_spec_noisy = data_noisy[rand, :, :, 0]
+# figs, axs = plt.subplots(2)
+# axs[0].imshow(random_spec)
+# axs[1].imshow(random_spec_noisy)
+# plt.show()
 
 # randomize the data
 np.random.shuffle(data)
@@ -141,5 +142,19 @@ Y_test = data_noisy[crit_index:]
 # create the model
 model = get_model(shape=data[0].shape, layers=4)
 model.summary()
+
+# train the model
+model.compile(optimizer='Adam', loss='mse')
+history = model.fit(
+    x=X_train, 
+    y=Y_train, 
+    validation_data=(X_test, Y_test),
+    batch_size=32,
+    epochs=10
+)
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.show()
 
 print("debug")
