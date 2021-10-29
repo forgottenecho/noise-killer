@@ -89,6 +89,9 @@ def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None
         if not max_songs is None and dataset.shape[0] > max_songs:
             break
     
+    # should currently be in 'dataset', go back to project root so 'os' works properly later on
+    os.chdir('..')
+    
     print('Dataset is of size {}'.format(dataset.shape))
 
     return dataset, dataset_noisy
@@ -131,10 +134,10 @@ def denoise_test(examples, model, hop_length, n_fft, save_dir=''):
         rebuild_denoised = librosa.feature.inverse.mel_to_audio(example_denoised[:, :, 0], sr=sample_rate, n_fft=n_fft, hop_length=hop_length)
 
         # output to file
-        # TODO not writing outfiles for some reason
         # TODO must fix so that output samples == nubmer of input samples. we are losing some samples
         soundfile.write('orig{}.wav'.format(i), data=rebuild, samplerate=sample_rate)
         soundfile.write('rebuild{}.wav'.format(i), data=rebuild_denoised, samplerate=sample_rate)
+        print('Saving song #{}'.format(i))
 
 # build the dataset
 data, data_noisy = get_training_data(max_songs=100, sample_size=4096, spec_nfft=511, spec_hop=64)
