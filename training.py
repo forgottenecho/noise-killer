@@ -7,8 +7,12 @@ import matplotlib.pyplot as plt
 import math
 import librosa
 import soundfile
+import time
 
-np.random.seed(42)
+# seed all libraries
+def seed_everything(seed):
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
 
 # helper function for preprocessing and dataset building
 def get_training_data(sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2):
@@ -134,13 +138,17 @@ def denoise_test(examples, model, hop_length, n_fft, save_dir=''):
         rebuild_denoised = librosa.feature.inverse.mel_to_audio(example_denoised[:, :, 0], sr=sample_rate, n_fft=n_fft, hop_length=hop_length)
 
         # output to file
+        # TODO orig is a bad name because it is actually noised, not the original file!
         # TODO must fix so that output samples == nubmer of input samples. we are losing some samples
         soundfile.write('orig{}.wav'.format(i), data=rebuild, samplerate=sample_rate)
         soundfile.write('rebuild{}.wav'.format(i), data=rebuild_denoised, samplerate=sample_rate)
         print('Saving song #{}'.format(i))
 
+# seed the bois
+seed_everything(42)
+
 # build the dataset
-data, data_noisy = get_training_data(max_songs=100, sample_size=4096, spec_nfft=511, spec_hop=64)
+data, data_noisy = get_training_data(max_songs=100000, sample_size=4096, spec_nfft=511, spec_hop=64)
 
 # # show random spectrogram to see that it works
 # rand = np.random.randint(0, data.shape[0])
@@ -167,6 +175,11 @@ Y_test = data_noisy[crit_index:]
 model = get_model(shape=data[0].shape, layers=4)
 model.summary()
 
+# callbacks
+time_stamp = str(round(time.time()))
+save = keras.callbacks.ModelCheckpoint('models/l{loss:.3g}-vl{val_loss:.3g}-t'+time_stamp, monitor='val_loss', save_best_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
+es = keras.callbacks.EarlyStopping('val_loss', patience=10)
+
 # train the model
 model.compile(optimizer='Adam', loss='mse')
 history = model.fit(
@@ -174,8 +187,8 @@ history = model.fit(
     y=Y_train, 
     validation_data=(X_test, Y_test),
     batch_size=32,
-    epochs=10
-
+    callbacks=[save,es],
+    epochs=10000
 )
 
 # save example 3 audio files for audio test of how it sounds
