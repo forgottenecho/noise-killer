@@ -176,30 +176,33 @@ Y_test = data[crit_index:]
 model = get_model(shape=data[0].shape, layers=4)
 model.summary()
 
-# callbacks
-time_stamp = str(round(time.time()))
-save = keras.callbacks.ModelCheckpoint('models/l{loss:.3g}-vl{val_loss:.3g}-t'+time_stamp, monitor='val_loss', save_best_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
-es = keras.callbacks.EarlyStopping('val_loss', patience=10)
+# added forever loop so dataset doesn't have to be completely reconstructed every single time
+while True:
+    patience = int(input("How much patience for the epochs? "))
+    # callbacks
+    time_stamp = str(round(time.time()))
+    save = keras.callbacks.ModelCheckpoint('models/l{loss:.3g}-vl{val_loss:.3g}-t'+time_stamp, monitor='val_loss', save_best_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
+    es = keras.callbacks.EarlyStopping('val_loss', patience=patience)
 
-# train the model
-model.compile(optimizer='Adam', loss='mse')
-history = model.fit(
-    x=X_train, 
-    y=Y_train, 
-    validation_data=(X_test, Y_test),
-    batch_size=32,
-    callbacks=[save,es],
-    epochs=10000
-)
+    # train the model
+    model.compile(optimizer='Adam', loss='mse')
+    history = model.fit(
+        x=X_train, 
+        y=Y_train, 
+        validation_data=(X_test, Y_test),
+        batch_size=32,
+        callbacks=[save,es],
+        epochs=100000
+    )
 
-# save example 3 audio files for audio test of how it sounds
-# TODO have some object that holds dataset construction params! so i don't have to keep passing into functions separately
-denoise_test(examples=X_test[0:3], model=model, hop_length=64, n_fft=511)
+    # save example 3 audio files for audio test of how it sounds
+    # TODO have some object that holds dataset construction params! so i don't have to keep passing into functions separately
+    denoise_test(examples=X_test[0:3], model=model, hop_length=64, n_fft=511)
 
-# output the training metrics
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.show()
+    # output the training metrics
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.show()
 
 
 print("debug")
