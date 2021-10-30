@@ -164,12 +164,13 @@ np.random.shuffle(data)
 np.random.shuffle(data_noisy)
 
 # split the dataset
+# MODEL SHOULD TAKE IN NOISY INPUT AND SPIT OUT DENOISED OUTPUT!
 ratio = 0.75
 crit_index = math.floor(ratio*len(data))
-X_train = data[:crit_index]
-X_test = data[crit_index:]
-Y_train = data_noisy[:crit_index]
-Y_test = data_noisy[crit_index:]
+X_train = data_noisy[:crit_index]
+X_test = data_noisy[crit_index:]
+Y_train = data[:crit_index]
+Y_test = data[crit_index:]
 
 # create the model
 model = get_model(shape=data[0].shape, layers=4)
