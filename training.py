@@ -1,3 +1,8 @@
+"""
+11/5/2021
+Four layers did not work so well, adjusting to 3 to see if  that helps the model generalize.
+My thinking is that the fourth compress has too small dimensionality to hold the data.
+"""
 import tensorflow as tf
 import tensorflow.keras as keras # parameter hints are broken unless I do this
 import tensorflow_io as tfio
@@ -173,7 +178,7 @@ Y_train = data[:crit_index]
 Y_test = data[crit_index:]
 
 # create the model
-model = get_model(shape=data[0].shape, layers=4)
+model = get_model(shape=data[0].shape, layers=3)
 model.summary()
 
 # added forever loop so dataset doesn't have to be completely reconstructed every single time
@@ -197,8 +202,8 @@ while True:
 
     # save example 3 audio files for audio test of how it sounds
     # TODO have some object that holds dataset construction params! so i don't have to keep passing into functions separately
-    denoise_test(examples=X_test[0:3], model=model, hop_length=64, n_fft=511)
-
+    denoise_test(examples=np.vstack([X_train[0:2],X_test[0:2]]), model=model, hop_length=64, n_fft=511)
+    
     # output the training metrics
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
