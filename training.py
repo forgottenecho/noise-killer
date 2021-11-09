@@ -18,6 +18,7 @@ import math
 import librosa
 import soundfile
 import time
+import json
 
 # seed all libraries
 def seed_everything(seed):
@@ -26,7 +27,7 @@ def seed_everything(seed):
 
 # training session class for identifying/reproducing training results
 class Session():
-    def __init__(self, sample_size, spec_nfft, spec_hop, num_layers, lr, split_ratio):
+    def __init__(self, sample_size, spec_nfft, spec_hop, num_layers, lr, split_ratio, debug):
         # dataset construction params
         self.sample_size = sample_size
         self.spec_nfft = spec_nfft
@@ -37,6 +38,12 @@ class Session():
         self.lr = lr
         self.split_ratio = split_ratio
         self.time_step = None
+
+        # other
+        self.debug = debug
+        self.time_stamp = None
+
+        self.new_time_stamp()
 
     # helper function for preprocessing and dataset building
     def _get_training_data(self, sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2):
@@ -152,6 +159,9 @@ class Session():
         # get denoised specs
         examples_denoised = model.predict(examples)
 
+        # prepare the save location
+        os.mkdir('models/t{}/audio_test'.format(self.time_stamp))
+
         for i in range(examples.shape[0]):
             example = examples[i]
             example_denoised = examples_denoised[i]
@@ -162,10 +172,9 @@ class Session():
             rebuild_denoised = librosa.feature.inverse.mel_to_audio(example_denoised[:, :, 0], sr=sample_rate, n_fft=n_fft, hop_length=hop_length)
 
             # output to file
-            # TODO orig is a bad name because it is actually noised, not the original file!
             # TODO must fix so that output samples == nubmer of input samples. we are losing some samples
-            soundfile.write('orig{}.wav'.format(i), data=rebuild, samplerate=sample_rate)
-            soundfile.write('rebuild{}.wav'.format(i), data=rebuild_denoised, samplerate=sample_rate)
+            soundfile.write('models/t{}/audio_test/noisy{}.wav'.format(self.time_stamp, i), data=rebuild, samplerate=sample_rate)
+            soundfile.write('models/t{}/audio_test/denoised{}.wav'.format(self.time_stamp, i), data=rebuild_denoised, samplerate=sample_rate)
             print('Saving song #{}'.format(i))
 
     # wrapper function for clean call
@@ -173,7 +182,7 @@ class Session():
         
         # only create partial dataset if debugging
         max_songs = None
-        if self.fast_for_debug:
+        if self.debug:
             max_songs = 100
 
         dataset, dataset_noisy = self._get_training_data(
@@ -200,16 +209,19 @@ class Session():
     def new_time_stamp(self):
         self.time_stamp = str(round(time.time()))
 
-    def load(path):
+    def load(self, path):
         pass
 
-    def save(path):
-        pass
+    def save(self):
+        outfile = open('models/t{}/session.json'.format(self.time_stamp),'w')
+        json.dump(self.__dict__, outfile, indent=2)
+        outfile.close()
 
 # seed the bois
 seed_everything(42)
 
 # training session object
+# all HYPERPARAMS are to be changed in this constructor
 current_session = Session(
     sample_size=4096,
     spec_nfft=511,
@@ -219,21 +231,28 @@ current_session = Session(
     lr = 0.001,
     split_ratio = 0.75,
 
-    fast_for_debug=True,
+    debug=True,
 )
 
 
 # build the dataset
 data, data_noisy = current_session.get_training_data()
 
-# # show random spectrogram to see that it works
-# rand = np.random.randint(0, data.shape[0])
-# random_spec = data[rand, :, :, 0]
-# random_spec_noisy = data_noisy[rand, :, :, 0]
-# figs, axs = plt.subplots(2)
-# axs[0].imshow(random_spec)
-# axs[1].imshow(random_spec_noisy)
-# plt.show()
+# show random spectrogram to see that it works
+if current_session.debug:
+    show_another = input("Show a random data instance (y/n)? ")
+
+    while show_another == 'y':
+        rand = np.random.randint(0, data.shape[0])
+        random_spec = data[rand, :, :, 0]
+        random_spec_noisy = data_noisy[rand, :, :, 0]
+        figs, axs = plt.subplots(2)
+        # TODO title the axes for noisy and non-noisy!
+        axs[0].imshow(random_spec)
+        axs[1].imshow(random_spec_noisy)
+        plt.show()
+
+        show_another = input("Show another random data instance (y/n)? ")
 
 # randomize the data
 np.random.shuffle(data)
@@ -257,12 +276,15 @@ while True:
     patience = int(input("How much patience for the epochs? "))
 
     # callbacks
-    current_session.new_time_stamp()
-    save = keras.callbacks.ModelCheckpoint('models/l{loss:.3g}-vl{val_loss:.3g}-t'+current_session.time_stamp, monitor='val_loss', save_best_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
+    save = keras.callbacks.ModelCheckpoint('models/t'+current_session.time_stamp+'/l{loss:.3g}-vl{val_loss:.3g}', monitor='val_loss', save_best_only=True, save_weights_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
     es = keras.callbacks.EarlyStopping('val_loss', patience=patience)
 
     # train the model
     lr = current_session.lr # TODO again with the broken abstraction :/
+    epochs = 100000 # will usually end early from the callback
+    if current_session.debug:
+        epochs = 5
+
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=lr), loss='mse')
     history = model.fit(
         x=X_train, 
@@ -270,7 +292,7 @@ while True:
         validation_data=(X_test, Y_test),
         batch_size=32,
         callbacks=[save,es],
-        epochs=100000
+        epochs=epochs
     )
 
     # save current_session to JSON
@@ -278,6 +300,7 @@ while True:
 
     # save example 3 audio files for audio test of how it sounds
     # TODO pass in BEST model not just last model
+    # best_model = 
     current_session.denoise_test(examples=np.vstack([X_train[0:2],X_test[0:2]]), model=model)
     
     # output the training metrics

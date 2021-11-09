@@ -8,5 +8,5 @@ librosa
 
 To Do
 - maybe utilize entire track
-- add testing subfolder that saves training graphs and "blueprint" object for dataset and model params
 - turn on TF GPU!
+- add script for analyzing new 'model' folder structure and finding best performing models and display their metrics
