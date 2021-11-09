@@ -8,5 +8,5 @@ librosa
 
 To Do
 - maybe utilize entire track
-- build python nn
-- train the model
+- add testing subfolder that saves training graphs and "blueprint" object for dataset and model params
+- turn on TF GPU!

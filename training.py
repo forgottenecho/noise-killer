@@ -2,6 +2,11 @@
 11/5/2021
 Four layers did not work so well, adjusting to 3 to see if  that helps the model generalize.
 My thinking is that the fourth compress has too small dimensionality to hold the data.
+
+11/8/2021
+Three layers did not go much better. Best model was Loss 20.9 Val_loss 19.0.
+My next try will be to create better mel spectrograms, because the current ones seem
+to be mostly dark pixels with just a few, scattered semi-bright lines
 """
 import tensorflow as tf
 import tensorflow.keras as keras # parameter hints are broken unless I do this
@@ -202,6 +207,7 @@ while True:
 
     # save example 3 audio files for audio test of how it sounds
     # TODO have some object that holds dataset construction params! so i don't have to keep passing into functions separately
+    # TODO pass in BEST model not just last model
     denoise_test(examples=np.vstack([X_train[0:2],X_test[0:2]]), model=model, hop_length=64, n_fft=511)
     
     # output the training metrics
