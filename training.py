@@ -7,6 +7,21 @@ My thinking is that the fourth compress has too small dimensionality to hold the
 Three layers did not go much better. Best model was Loss 20.9 Val_loss 19.0.
 My next try will be to create better mel spectrograms, because the current ones seem
 to be mostly dark pixels with just a few, scattered semi-bright lines
+
+11/9/2021
+Two layers didn't work either. At this point I'm just trying to get the model to overfit,
+at least ot prove that the explanatory power exists within the model. may have to do some
+more adjusting
+
+11/9/2021
+JUST NOTICED THAT THE FREAKING CONV LAYERS HAD LINEAR ACTIVATION! This probably explains why
+all the models have had such a hard time
+
+11/11/2021
+Adding ReLU activations still produced similar results. I was stepping throuhg the entire runtime
+of the program to find other errors and I saw that the convolutional layers have only 2-4 filters.
+This is an extreme lack of explanatory power! I am adding U-Net-esque filter scaling, so that the
+filters increas as the layers deepen, 64, 128, 256 ...
 """
 import tensorflow as tf
 import tensorflow.keras as keras # parameter hints are broken unless I do this
@@ -136,19 +151,24 @@ class Session():
         assert layers > 0
         input = keras.layers.Input(shape=shape)
         last_layer = input
+        num_filters = 64
 
         # encoder portion
         for i in range(layers):
-            x = keras.layers.Conv2D(filters=4, kernel_size=3, padding='same')(last_layer)
+            x = keras.layers.Conv2D(filters=num_filters, kernel_size=3, padding='same', activation='relu')(last_layer)
             x = keras.layers.MaxPool2D()(x)
+            num_filters *= 2
             last_layer = x
         
+        num_filters /= 2
+
         # decoder portion
         for i in range(layers):
-            x = keras.layers.Conv2DTranspose(filters=2, kernel_size=3, strides=2, padding='same')(last_layer)
+            x = keras.layers.Conv2DTranspose(filters=num_filters, kernel_size=3, strides=2, padding='same',  activation='relu')(last_layer)
+            num_filters /= 2
             last_layer = x
 
-        output = last_layer
+        output = keras.layers.Conv2D(shape[-1], 1)(last_layer)
 
         return keras.Model(input, output)
     
@@ -160,7 +180,9 @@ class Session():
         examples_denoised = model.predict(examples)
 
         # prepare the save location
-        os.mkdir('models/t{}/audio_test'.format(self.time_stamp))
+        save_path = 'models/t{}/audio_test'.format(self.time_stamp)
+        if not os.path.exists(save_path):
+            os.mkdir(save_path)
 
         for i in range(examples.shape[0]):
             example = examples[i]
@@ -227,7 +249,7 @@ current_session = Session(
     spec_nfft=511,
     spec_hop=64,
 
-    num_layers=3,
+    num_layers=2,
     lr = 0.001,
     split_ratio = 0.75,
 
@@ -304,6 +326,7 @@ while True:
     current_session.denoise_test(examples=np.vstack([X_train[0:2],X_test[0:2]]), model=model)
     
     # output the training metrics
+    # TODO save metrics to folder?
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.show()
