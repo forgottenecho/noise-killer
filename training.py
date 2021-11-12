@@ -17,11 +17,18 @@ more adjusting
 JUST NOTICED THAT THE FREAKING CONV LAYERS HAD LINEAR ACTIVATION! This probably explains why
 all the models have had such a hard time
 
+11/10/2021
+Enabled GPU for tensorflow, major speedup from 11s -> 2s per epoch
+
 11/11/2021
 Adding ReLU activations still produced similar results. I was stepping throuhg the entire runtime
 of the program to find other errors and I saw that the convolutional layers have only 2-4 filters.
 This is an extreme lack of explanatory power! I am adding U-Net-esque filter scaling, so that the
 filters increas as the layers deepen, 64, 128, 256 ...
+
+11/11/2021
+Finally the model is fitting to the data! Overfitting, so need to adjust hyper params and maybe add
+dropout
 """
 import tensorflow as tf
 import tensorflow.keras as keras # parameter hints are broken unless I do this
@@ -201,18 +208,34 @@ class Session():
 
     # wrapper function for clean call
     def get_training_data(self):
-        
-        # only create partial dataset if debugging
-        max_songs = None
-        if self.debug:
-            max_songs = 100
+        # adding possibility for saving/loading datasets to avoid need for reconstruction for every train
+        save_path = 'dataset_specs/{}-{}-{}.npy'.format(
+            self.sample_size,
+            self.spec_nfft,
+            self.spec_hop)
+        if os.path.exists(save_path):
+            # dataset has already been made, load it up
+            combined = np.load(save_path)
+            dataset = combined[0]
+            dataset_noisy = combined[1]
+        else: 
+            # create dataset from scratch
 
-        dataset, dataset_noisy = self._get_training_data(
-            sample_size=self.sample_size,
-            spec_nfft=self.spec_nfft,
-            spec_hop=self.spec_hop,
-            max_songs=max_songs
-        )
+            # only create partial dataset if debugging
+            max_songs = None
+            if self.debug:
+                max_songs = 100
+
+            dataset, dataset_noisy = self._get_training_data(
+                sample_size=self.sample_size,
+                spec_nfft=self.spec_nfft,
+                spec_hop=self.spec_hop,
+                max_songs=max_songs
+            )
+
+            # save dataset for future reuse
+            combined = np.stack([dataset, dataset_noisy])
+            np.save(save_path, combined)
 
         # save internally for when we build the model
         self.instance_shape = dataset[0].shape
@@ -253,7 +276,7 @@ current_session = Session(
     lr = 0.001,
     split_ratio = 0.75,
 
-    debug=True,
+    debug=False,
 )
 
 
