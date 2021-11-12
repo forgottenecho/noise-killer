@@ -49,7 +49,7 @@ def seed_everything(seed):
 
 # training session class for identifying/reproducing training results
 class Session():
-    def __init__(self, sample_size, spec_nfft, spec_hop, num_layers, lr, split_ratio, debug):
+    def __init__(self, sample_size, spec_nfft, spec_hop, num_layers, starting_filters, lr, split_ratio, debug):
         # dataset construction params
         self.sample_size = sample_size
         self.spec_nfft = spec_nfft
@@ -57,6 +57,7 @@ class Session():
 
         # training params
         self.num_layers = num_layers
+        self.starting_filters = starting_filters
         self.lr = lr
         self.split_ratio = split_ratio
         self.time_step = None
@@ -154,11 +155,11 @@ class Session():
         return dataset, dataset_noisy
 
     # helper function for model architecture
-    def _get_model(self, shape, layers=1):
+    def _get_model(self, shape, layers=1, starting_filters=64):
         assert layers > 0
         input = keras.layers.Input(shape=shape)
         last_layer = input
-        num_filters = 64
+        num_filters = starting_filters
 
         # encoder portion
         for i in range(layers):
@@ -215,9 +216,11 @@ class Session():
             self.spec_hop)
         if os.path.exists(save_path):
             # dataset has already been made, load it up
+            print('\nDataset already exists! Loading from file {}'.format(save_path))
             combined = np.load(save_path)
             dataset = combined[0]
             dataset_noisy = combined[1]
+            print('Found {} instances in the dataset.\n'.format(dataset.shape[0]))
         else: 
             # create dataset from scratch
 
@@ -234,6 +237,7 @@ class Session():
             )
 
             # save dataset for future reuse
+            print('Dataset did not exist! Saving to file {}'.format(save_path))
             combined = np.stack([dataset, dataset_noisy])
             np.save(save_path, combined)
 
@@ -244,7 +248,7 @@ class Session():
 
     # wrapper fucn
     def get_model(self):
-        return self._get_model(shape=self.instance_shape, layers=self.num_layers)
+        return self._get_model(shape=self.instance_shape, layers=self.num_layers, starting_filters=self.starting_filters)
 
     # wrapper func
     def denoise_test(self, examples, model):
@@ -273,6 +277,7 @@ current_session = Session(
     spec_hop=64,
 
     num_layers=2,
+    starting_filters=8,
     lr = 0.001,
     split_ratio = 0.75,
 
