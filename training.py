@@ -214,6 +214,12 @@ class Session():
             self.sample_size,
             self.spec_nfft,
             self.spec_hop)
+
+        # use a smaller dataset save file for debugging
+        if self.debug:
+            save_path = save_path.split('.')[0] + '-debug.' + save_path.split('.')[1]
+
+        # check for existing dataset
         if os.path.exists(save_path):
             # dataset has already been made, load it up
             print('\nDataset already exists! Loading from file {}'.format(save_path))
@@ -276,9 +282,9 @@ current_session = Session(
     spec_nfft=511,
     spec_hop=64,
 
-    num_layers=2,
-    starting_filters=8,
-    lr = 0.001,
+    num_layers=3,
+    starting_filters=2,
+    lr = 0.0005,
     split_ratio = 0.75,
 
     debug=False,
@@ -323,7 +329,12 @@ model.summary()
 
 # added forever loop so dataset doesn't have to be completely reconstructed every single time
 while True:
-    patience = int(input("How much patience for the epochs? "))
+    patience = input("How much patience for the epochs? Enter 'exit' to leave: ")
+
+    if patience == 'exit':
+        break
+    else:
+        patience = int(patience)
 
     # callbacks
     save = keras.callbacks.ModelCheckpoint('models/t'+current_session.time_stamp+'/l{loss:.3g}-vl{val_loss:.3g}', monitor='val_loss', save_best_only=True, save_weights_only=True) # have to str concat bc ModelCheckpoint uses format specifiers already
@@ -354,10 +365,13 @@ while True:
     current_session.denoise_test(examples=np.vstack([X_train[0:2],X_test[0:2]]), model=model)
     
     # output the training metrics
-    # TODO save metrics to folder?
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.show()
+    plt.plot(history.history['loss'], label='loss')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    plt.legend()
+    metrics_path = 'models/t'+current_session.time_stamp+'/history.png'
+    print('Metrics plot saved to {}'.format(metrics_path))
+    plt.savefig(metrics_path)
+    plt.close()
 
 
 print("debug")
