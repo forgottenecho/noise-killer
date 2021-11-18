@@ -29,6 +29,11 @@ filters increas as the layers deepen, 64, 128, 256 ...
 11/11/2021
 Finally the model is fitting to the data! Overfitting, so need to adjust hyper params and maybe add
 dropout
+
+11/17/2021
+After more training and no good results, I added dropout loyers and eventually just reconstructed
+the whole datset. I added a feature to be able to change n_mels, which edits the number of freq
+bins each mel spectrogram has.
 """
 import tensorflow as tf
 import tensorflow.keras as keras # parameter hints are broken unless I do this
@@ -49,11 +54,12 @@ def seed_everything(seed):
 
 # training session class for identifying/reproducing training results
 class Session():
-    def __init__(self, sample_size, spec_nfft, spec_hop, num_layers, starting_filters, lr, split_ratio, debug):
+    def __init__(self, sample_size, spec_nfft, spec_hop, n_mels, num_layers, starting_filters, lr, split_ratio, debug):
         # dataset construction params
         self.sample_size = sample_size
         self.spec_nfft = spec_nfft
         self.spec_hop = spec_hop
+        self.n_mels = n_mels
 
         # training params
         self.num_layers = num_layers
@@ -69,7 +75,7 @@ class Session():
         self.new_time_stamp()
 
     # helper function for preprocessing and dataset building
-    def _get_training_data(self, sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2):
+    def _get_training_data(self, sample_size=1024, acceptable_rates=[44100], max_songs=None, spec_nfft=500, spec_hop=50, noise_factor=0.2, n_mels=128):
 
         # placeholder for later
         dataset = None
@@ -117,10 +123,10 @@ class Session():
                 song_tensor_noisy = song_tensor_noisy.numpy()
 
                 # generate those lovely spectrograms, one per each audio channel
-                mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
-                mel_spec_channel_2 = librosa.feature.melspectrogram(y=song_tensor[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
-                mel_spec_noisy_1 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
-                mel_spec_noisy_2 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop)
+                mel_spec_channel_1 = librosa.feature.melspectrogram(y=song_tensor[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop, n_mels=n_mels)
+                mel_spec_channel_2 = librosa.feature.melspectrogram(y=song_tensor[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop, n_mels=n_mels)
+                mel_spec_noisy_1 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,0], sr=rate, n_fft=spec_nfft, hop_length=spec_hop, n_mels=n_mels)
+                mel_spec_noisy_2 = librosa.feature.melspectrogram(y=song_tensor_noisy[:,1], sr=rate, n_fft=spec_nfft, hop_length=spec_hop, n_mels=n_mels)
 
                 # create dataset / append to the dataset
                 new_instance = np.empty((1, mel_spec_channel_1.shape[0], mel_spec_channel_2.shape[1], 2))
@@ -155,7 +161,7 @@ class Session():
         return dataset, dataset_noisy
 
     # helper function for model architecture
-    def _get_model(self, shape, layers=1, starting_filters=64):
+    def _get_model(self, shape, layers=1, starting_filters=64, dropout_rate=0.25):
         assert layers > 0
         input = keras.layers.Input(shape=shape)
         last_layer = input
@@ -165,6 +171,7 @@ class Session():
         for i in range(layers):
             x = keras.layers.Conv2D(filters=num_filters, kernel_size=3, padding='same', activation='relu')(last_layer)
             x = keras.layers.MaxPool2D()(x)
+            x = keras.layers.Dropout(dropout_rate)(x)
             num_filters *= 2
             last_layer = x
         
@@ -173,6 +180,7 @@ class Session():
         # decoder portion
         for i in range(layers):
             x = keras.layers.Conv2DTranspose(filters=num_filters, kernel_size=3, strides=2, padding='same',  activation='relu')(last_layer)
+            x = keras.layers.Dropout(dropout_rate)(x)
             num_filters /= 2
             last_layer = x
 
@@ -210,10 +218,11 @@ class Session():
     # wrapper function for clean call
     def get_training_data(self):
         # adding possibility for saving/loading datasets to avoid need for reconstruction for every train
-        save_path = 'dataset_specs/{}-{}-{}.npy'.format(
+        save_path = 'dataset_specs/{}-{}-{}-{}.npy'.format(
             self.sample_size,
             self.spec_nfft,
-            self.spec_hop)
+            self.spec_hop,
+            self.n_mels)
 
         # use a smaller dataset save file for debugging
         if self.debug:
@@ -239,6 +248,7 @@ class Session():
                 sample_size=self.sample_size,
                 spec_nfft=self.spec_nfft,
                 spec_hop=self.spec_hop,
+                n_mels=self.n_mels,
                 max_songs=max_songs
             )
 
@@ -279,15 +289,16 @@ seed_everything(42)
 # all HYPERPARAMS are to be changed in this constructor
 current_session = Session(
     sample_size=4096,
-    spec_nfft=511,
-    spec_hop=64,
+    spec_nfft=256,
+    spec_hop=128,
+    n_mels=64,
 
     num_layers=3,
-    starting_filters=2,
-    lr = 0.0005,
+    starting_filters=4,
+    lr = 0.001,
     split_ratio = 0.75,
 
-    debug=False,
+    debug=True,
 )
 
 
